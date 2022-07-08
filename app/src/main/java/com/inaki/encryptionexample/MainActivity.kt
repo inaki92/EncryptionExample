@@ -3,10 +3,10 @@ package com.inaki.encryptionexample
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Base64
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 import com.inaki.encryptionexample.databinding.ActivityMainBinding
-import com.inaki.encryptionexample.security.DecryptionProcess
-import com.inaki.encryptionexample.security.EncryptionProcess
-import java.util.*
+import com.inaki.encryptionexample.encryption.EncryptionProcess
 
 class MainActivity : AppCompatActivity() {
 
@@ -14,11 +14,22 @@ class MainActivity : AppCompatActivity() {
         ActivityMainBinding.inflate(layoutInflater)
     }
 
-    private val encryptor: EncryptionProcess = EncryptionProcess()
+    private val encryption by lazy {
+        EncryptionProcess()
+    }
 
+    private val masterKey by lazy {
+        MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+    }
 
-    private val decryptor: DecryptionProcess by lazy {
-        DecryptionProcess()
+    private val sharedPrefs by lazy {
+        EncryptedSharedPreferences.create(
+            "my_shared_prefs",
+            masterKey,
+            applicationContext,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,25 +41,19 @@ class MainActivity : AppCompatActivity() {
         binding.encryptBtn.setOnClickListener { encryptText() }
     }
 
-    private fun decryptText() {
-        val decryptedText = encryptor.encryption?.let {
-            encryptor.iv?.let { iv ->
-                decryptor.decryptData(ALIAS_KEY, it, iv)
-            }
-        } ?: "No data to decrypt"
+    private fun decryptText() =
+        encryption.encryptedData?.let {
+            encryption.decryptData(ALIAS_KEY)
+        } ?: "No data to decrypt".also {
+            binding.myText.text = it
+        }
 
-        binding.myText.text = decryptedText
-    }
-
-    private fun encryptText() {
-        val valueEncrypted = encryptor.encryptText(binding.txtToEncrypt.text.toString(), ALIAS_KEY)
-
-        valueEncrypted?.let {
+    private fun encryptText() =
+        encryption.encryptData(binding.txtToEncrypt.text.toString(), ALIAS_KEY).also { valueEncrypted ->
             binding.myText.text = Base64.encodeToString(valueEncrypted, Base64.DEFAULT)
         }
-    }
 
     companion object {
-        private const val ALIAS_KEY = "ANDROID_KEY"
+        private const val ALIAS_KEY = "ANDROID_KEY_1"
     }
 }

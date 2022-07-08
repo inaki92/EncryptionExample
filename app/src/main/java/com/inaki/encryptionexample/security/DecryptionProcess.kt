@@ -1,5 +1,6 @@
 package com.inaki.encryptionexample.security
 
+import android.database.Cursor
 import java.nio.charset.Charset
 import java.security.KeyStore
 import javax.crypto.Cipher
